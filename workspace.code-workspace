@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Test",
+			"path": "test"
+		}
+	],
+	"settings": {
+		"editor.wordWrap": "wordWrapColumn",
+		"editor.autoClosingBrackets": "always",
+		"editor.minimap.maxColumn": 120,
+		"editor.scrollBeyondLastColumn": 10,
+		"editor.wordWrapColumn": 120,
+		"editor.rulers": [
+			80,
+			120
+		],
+		"workbench.colorCustomizations": {
+			"editorRuler.foreground": "#ff408130"
+		}
+	}
+}
