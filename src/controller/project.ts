@@ -21,8 +21,7 @@ export class Project {
     readonly defaultDirs: string[] = ['', '.envs', 'packages', 'logs', 'closedPackage', 'source'];
     private _path: string;
     public config: Interface.Project.ConfigFile;
-
-    private dirName: string;
+    private configFile: string;
 
     constructor(args: Interface.Project.ClassArgs = null) {
         if (!args) args = defaultArg;
@@ -44,13 +43,13 @@ export class Project {
     set name(name: string) { this.config.name = name.trim(); }
 
     get path() { return this._path }
-    set path(path: string) { this._path = path.trim(); }
+    set path(path: string) {
+        this._path = path.trim();
+        this.configFile = this._path + '\\config.json';
+    }
 
     public isValid(preventException: Boolean = false): Boolean {
         let message = ''
-
-        console.log('this.config.name', this.config.name);
-
 
         if ((!this.config.name || this.config.name == '')) message = chalk.bold.red("Missing or invalid project name");
         else if (this._path == '') message = chalk.bold.red("Invalid project path");
@@ -63,78 +62,46 @@ export class Project {
     }
 
     public create(args: Interface.Project.CM_Create = {}): Boolean {
-        //Set default values
-        if (!this.isValid()) {
-            // TODO log erro
-            return;
-        }
+        this.isValid();
 
-        // * Path
-        let saveAt: string = null;
-        if (args.path && args.path != '') {
-            if (Path.isAbsolute(args.path)) Utils.string.errorMessage(`"${args.path}" isn't a absolute path.
-            `)
-            if (!fs.existsSync(args.path)) Utils.string.errorMessage(`Path at "${args.path}" not founded`)
-            // TODO pasta recebedora existe 
-            // TODO pasta a ser criada não existe 
+        let saveAt: string = args.path ?? this.path;
+        if (!saveAt) Utils.string.errorMessage("Project must have a destiation path: Ex: C:\\testProject");
 
-            // todo pipocar erro
-            saveAt = `${args.path.trim()}\\${Utils.string.camelCase(this.name)}`;
-        }
-        else if (this.path && this.path != '') {
-            // this._creatAt = this._path.split('\\');
-            // this._creatAt.pop();
-            // this._creatAt = this._creatAt.join('\\');
+        if (fs.existsSync(saveAt)) Utils.string.errorMessage(`Dir at ${saveAt} already exist!`);
 
-        }
+        for (const dir of this.defaultDirs) fs.mkdirSync(`${saveAt}\\${dir}`);
 
-        // TODO Path: informado
-        // TODO Path: projeto com pop
-        // if(!Path.isAbsolute(saveAt)) Utils.string.errorMessage("Path isn't a absolut path!");
+        this.saveConfig();
 
-
-
-        // TODO Default: force
-        // TODO Default: confirm
-
-
-
-
-        //TODO Salva na pasta
-        //TODO Cria pastas
-        //TODO Abre pasta
-        //TODO Cria config
-
-        //     this.defaultDirs.forEach(dir => { fs.mkdirSync(`${this.path}\\${dir}`) });
-
-        //     fs.writeFileSync(this.path + '\\config.json', JSON.stringify(this.config, null, 4));
-
-        //     childProcess.exec(`start "" "${this.path}"`);
-
-
-        //saveConfig
         return true;
 
     }
 
-    //TODO
-    public configFileExist() {
-        return fs.existsSync(`${this._path}\\config.json`);
+    public saveConfig(path: string = this.path, force: Boolean = false): Boolean {
+        path = path ?? this.configFile;
+
+        if (!Path.isAbsolute(path)) Utils.string.errorMessage(`"${path}" isn't a valid path!`);
+        else if (!force && this.configFileExist()) Utils.string.errorMessage(`"${path}" already exist`);
+
+        fs.writeFileSync(path, JSON.stringify(this.config, null, 4))
+
+        return true;
     }
 
-    //TODO
-    public loadConfig() {
-        let confFilePath = `${this._path}\\config.json`;
+    public configFileExist(): Boolean { return fs.existsSync(this.configFile); }
+
+    public loadConfig(): Interface.Project.ConfigFile {
+        if (!this.configFileExist()) Utils.string.errorMessage(`Missing file at "${this.configFile}".`);
 
         try {
-            this.config = JSON.parse(fs.readFileSync(confFilePath, {}).toString());
+            this.config = JSON.parse(fs.readFileSync(this.configFile, {}).toString());
         } catch (error) {
-            throw new Error(`Not founded ${confFilePath}`);
+            Utils.string.errorMessage(`Fail on reading file at "${this.configFile}".`);    
         }
+        
+        return this.config
     }
 
-    //TODO
-    public saveConfig(path: string, force: Boolean = false): Boolean {
-        return true;
-    }
+     // TODO Save project on informed folder as a new project
+    // public saveAt(){}
 }

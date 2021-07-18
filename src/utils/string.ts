@@ -3,7 +3,7 @@ import * as chalk from 'chalk';
 export function printPretty(list: string[][]) {
     let message = '';
 
-    for (const item of list) message += `${chalk.bold(`${item[0]}:`)} ${item[1]}\n`;
+    for (const item of list) message += `${chalk.green("* ")}${chalk.bold(`${item[0]}:`)} ${item[1]}\n`;
 
     console.log(message.substring(0, message.length - 1));
 }
@@ -38,4 +38,8 @@ export function camelCase(str: string): string {
         .replace(/\s+/g, "")
         .replace(/^[A-Z]/g, (s) => s.toLowerCase())
     return str;
+}
+
+export function warning(str: string): string {
+    return chalk.bgYellow.blackBright.bold(" ! " + str + ' ')
 }

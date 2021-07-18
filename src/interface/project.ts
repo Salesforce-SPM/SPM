@@ -17,5 +17,4 @@ export interface ClassArgs {
 // Private
 export interface CM_Create {
     path?: string,
-    confirm?: Boolean,
 }

@@ -9,34 +9,44 @@ interface ProjectData {
   name: String,
   path: String
 }
+const commandDescription = Utils.oclif.commandDescription(
+  'init',
+  [
+    'Will create a new project, if no path is informed, it will be created in the current folder.',
+    'The name argument and path are both optional',
+    'If informed a name, it be converted to "camelCase" on folder creation',
+    'If informed a path, it must be absolute and not exist.',
+    'In order to inform a path, a must be informed before: "$ spm init "Some Name" c:\\someName"'
+  ]
+);
 
-function parseNoConfirm(input: string) {
-  const allowedReplies = ['y', 'yes', 'true']
-
-  input = input.trim().toLocaleLowerCase();
-
-  return `${allowedReplies.includes(input)}`
-}
+const commandExamples = Utils.oclif.commandExample(
+  { command: 'init', },
+  [
+    `"Some Name"`,
+    `"Some Name" c:\\someName`,
+    `"Some Name" c:\\someOtherName`,
+    `"Some Name" c:\\someOtherName -f`,
+  ]
+);
 
 export default class InitProject extends Command {
-  static description = 'spm init will create a new project, if no path is informed, it will be created in the current folder'
+  static description = commandDescription
 
-  static examples = [
-    `$ spm init`,
-    `$ spm init "Some Name"`,
-    `$ spm init "Some Name" c:\\path`,
-    `$ spm init "Some Name" c:\\path -f y`,
-    `$ spm init "Some Name" c:\\path -f=y`
-  ]
+  static examples = commandExamples
 
   static flags = {
     help: flags.help({ char: 'h', description: 'Show command options' }),
-    force: flags.string({ char: 'f', description: 'Auto config project creation', helpValue: 'y', options: ['y', 'yes', 'true', 'n', 'no', 'false'], parse: input => parseNoConfirm(input) })
+    force: flags.boolean({
+      char: 'f',
+      default: false,
+      description: 'Auto confirm project creation',
+    })
   }
 
   static args = [
-    { name: 'name', description: 'Set project name' },
-    { name: 'path', description: 'Set project path' }
+    { name: 'name', description: 'Optional, set project name, if not informed, terminal will ask for a project name.' },
+    { name: 'path', description: 'Optional, set project path, by default, it uses the current terminal location.' }
   ]
 
   getName = async (defaultValue: String | undefined) => {
@@ -56,37 +66,39 @@ export default class InitProject extends Command {
     return response
   }
 
-  // @ts-ignore
   async run() {
     const { args, flags } = this.parse(InitProject);
 
     const projectName: string = await this.getName(args.name);
     const projectPath: string = args.path ?? process.cwd() + '\\' + Utils.string.camelCase(projectName);
 
-    var confirmCreation = flags.force === 'true';
-
-    console.log({ projectName });
-
+    var confirmCreation: Boolean = flags.force;
 
     const project = new controller.Project({
       path: projectPath,
       name: projectName,
     });
 
-    project.isValid();
-
-    console.log(`Creating new project: \n${project.toString()}\n${chalk.bold('At')}: ${project.creatAt}`);
+    project.isValid()
 
 
-    // if (!confirmCreation) {
-    //   confirmCreation = (await inquirer.prompt({
-    //     type: 'confirm',
-    //     name: 'resp',
-    //     message: `Confirm creation of new project? `
-    //   })).resp;
-    // }
+    console.log(Utils.string.warning(`Creating new project:`));
+    Utils.string.printPretty([
+      ["Name", project.name],
+      ["At", project.path]
+    ])
 
-    // if (confirmCreation) return project.create();
-    // else console.log('Project creation canceled');
+    if (confirmCreation) {
+      console.log(`Project creation auto confirmed`);
+    } else {
+      confirmCreation = (await inquirer.prompt({
+        type: 'confirm',
+        name: 'resp',
+        message: `Confirm creation of new project? `
+      })).resp;
+    }
+
+    if (confirmCreation) return project.create();
+    else console.log(Utils.string.warning('Project creation canceled'));
   }
 }
