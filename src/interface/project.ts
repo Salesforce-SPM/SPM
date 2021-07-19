@@ -6,7 +6,7 @@ export interface ConfigFile {
 }
 
 export interface ClassArgs {
-    path?: string,
+    path: string,
     name?: string,
     config?: ConfigFile
     loadConfig?: Boolean
