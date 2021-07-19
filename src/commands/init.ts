@@ -1,7 +1,9 @@
+import * as ChildProcess from 'child_process'
+import * as Fs from 'fs';
+
 import { Command, flags } from '@oclif/command';
-import * as fs from 'fs';
 import * as inquirer from 'inquirer';
-import * as chalk from 'chalk';
+
 import * as Utils from '../utils/'
 import * as controller from '../controller/'
 
@@ -59,7 +61,7 @@ export default class InitProject extends Command {
     if (response == undefined) response = '';
 
     try {
-      if (fs.lstatSync(<string>response).isDirectory() == false) response = '';
+      if (Fs.lstatSync(<string>response).isDirectory() == false) response = '';
     }
     catch (error) { response = '' }
 
@@ -79,7 +81,7 @@ export default class InitProject extends Command {
       name: projectName,
     });
 
-    project.isValid()
+    project.isValid();
 
 
     console.log(Utils.string.warning(`Creating new project:`));
@@ -98,7 +100,13 @@ export default class InitProject extends Command {
       })).resp;
     }
 
-    if (confirmCreation) return project.create();
-    else console.log(Utils.string.warning('Project creation canceled'));
+    if (!confirmCreation) console.log(Utils.string.warning('Project creation canceled'));
+
+    if (project.create()) {
+      console.log(Utils.string.warning(project.name + " created."));
+
+      try { ChildProcess.exec('start "" ' + project.path) }
+      catch (error) { console.log(error, "\nFail to open dir on file explorer") }
+    }
   }
 }

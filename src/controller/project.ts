@@ -1,4 +1,3 @@
-// import * as childProcess from 'child_process';
 import * as fs from 'fs';
 import * as Utils from '../utils';
 import * as Interface from '../interface'
@@ -65,7 +64,7 @@ export class Project {
         this.isValid();
 
         let saveAt: string = args.path ?? this.path;
-        if (!saveAt) Utils.string.errorMessage("Project must have a destiation path: Ex: C:\\testProject");
+        if (!saveAt) Utils.string.errorMessage("Project must have a destination path: Ex: C:\\testProject");
 
         if (fs.existsSync(saveAt)) Utils.string.errorMessage(`Dir at ${saveAt} already exist!`);
 
@@ -74,10 +73,9 @@ export class Project {
         this.saveConfig();
 
         return true;
-
     }
 
-    public saveConfig(path: string = this.path, force: Boolean = false): Boolean {
+    public saveConfig(path: string = this.configFile, force: Boolean = false): Boolean {
         path = path ?? this.configFile;
 
         if (!Path.isAbsolute(path)) Utils.string.errorMessage(`"${path}" isn't a valid path!`);
@@ -96,12 +94,12 @@ export class Project {
         try {
             this.config = JSON.parse(fs.readFileSync(this.configFile, {}).toString());
         } catch (error) {
-            Utils.string.errorMessage(`Fail on reading file at "${this.configFile}".`);    
+            Utils.string.errorMessage(`Fail on reading file at "${this.configFile}".`);
         }
-        
+
         return this.config
     }
 
-     // TODO Save project on informed folder as a new project
+    // TODO Save project on informed folder as a new project
     // public saveAt(){}
 }
