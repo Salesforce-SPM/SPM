@@ -1,5 +1,5 @@
 {
-  "name": "salesforce-package-manager-cli",
+  "name": "smp",
   "version": "0.0.0",
   "author": "Gabriel Loch",
   "bin": {

@@ -1,6 +1,54 @@
 import { Command, flags } from '@oclif/command';
-import * as controller from '../controller/'
-import * as inquirer from 'inquirer';
+
+import * as Controller from '../controller/'
+import { default as MenuController } from '../controller/menu'
+import { Project } from '../interface';
+
+import * as Utils from '../utils/'
+import * as Menu from '../menu/'
+
+
+// `"Some Name"`,
+// `"Some Name" c:\\someName`,
+// `"Some Name" c:\\someOtherName`,
+// `"Some Name" c:\\someOtherName -f`,
+
+export default class StartMenu extends Command {
+  static description = Utils.oclif.commandDescription(
+    'start',
+    [
+      'Will SPM menu context, you must AWAYS call it at project root',
+      "It doesn't has any argument or options"
+    ]
+  );
+
+  static examples = Utils.oclif.commandExample({ command: 'start', }, []);
+
+  static flags = {
+    help: flags.help({ char: 'h', description: 'Show command options' }),
+  }
+
+
+  async run() {
+    const { args, flags } = this.parse(StartMenu);
+
+
+    Menu.mainMenu.start()
+
+    // const menu = new MenuController()
+
+    // menu.menuText = menu.project.name;
+
+    // TODO criar projeto
+    // TODO checar config.json
+    // TODO carregar config.json
+
+    // carregar info do menu
+
+  }
+}
+
+
 // import * as Interfaces from '../interfaces'
 // import * as Utils from '../utils'
 
@@ -23,37 +71,24 @@ import * as inquirer from 'inquirer';
 // }
 
 
-export default class StartMenu extends Command {
-  static description = ''; //TODO
 
-  static examples = [``]; // TODO
+// run ==================== 
 
-  static flags = {
-    help: flags.help({ char: 'h' }), // flag with a value (-n, --name=VALUE)
-  }
+// // var choice: Function | string = '1.ENVS';
 
+// const mainMenu = Menu.main;
 
-  async run() {
-    // const { args, flags } = this.parse(StartMenu)
+// mainMenu.start();
+// // // choice = await environmentsMenu.displayOptions();
+// // const mainMenu: controller.TaskMenu = MainMenu();
 
-    // // var choice: Function | string = '1.ENVS';
-
-    // const mainMenu = Menu.main;
-
-    // mainMenu.start();
-    // // // choice = await environmentsMenu.displayOptions();
-    // // const mainMenu: controller.TaskMenu = MainMenu();
-
-    // //todo montar menu utils
+// //todo montar menu utils
 
 
 
-    // do {
-   
+// do {
 
 
 
-    // } while (choice != 'exit');
 
-  }
-}
+// } while (choice != 'exit');

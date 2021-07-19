@@ -5,7 +5,7 @@ import { Command, flags } from '@oclif/command';
 import * as inquirer from 'inquirer';
 
 import * as Utils from '../utils/'
-import * as controller from '../controller/'
+import * as Controller from '../controller/'
 
 interface ProjectData {
   name: String,
@@ -76,7 +76,7 @@ export default class InitProject extends Command {
 
     var confirmCreation: Boolean = flags.force;
 
-    const project = new controller.Project({
+    const project = new Controller.Project({
       path: projectPath,
       name: projectName,
     });
@@ -100,7 +100,7 @@ export default class InitProject extends Command {
       })).resp;
     }
 
-    if (!confirmCreation) console.log(Utils.string.warning('Project creation canceled'));
+    if (!confirmCreation) return console.log(Utils.string.warning('Project creation canceled'));
 
     if (project.create()) {
       console.log(Utils.string.warning(project.name + " created."));
