@@ -31,6 +31,8 @@ export default class ${names.camelCase} extends Command {
 
     fs.writeFileSync(`./src/commands/${names.regular}.ts`, file);
 
+    ChildProcess.exec(`code -r ./src/commands/${names.regular}.ts`)
+
     function parseName(name) {
         let res = []
 
