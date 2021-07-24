@@ -6,6 +6,9 @@
 		{
 			"name": "Test",
 			"path": "test"
+		},
+		{
+			"path": "node_modules\\salesforce-api-connector"
 		}
 	],
 	"settings": {
