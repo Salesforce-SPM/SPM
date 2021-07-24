@@ -1,4 +1,5 @@
 import * as chalk from 'chalk';
+import * as fs from 'fs';
 
 interface oclifUtilArg {
     command: string,
@@ -6,7 +7,7 @@ interface oclifUtilArg {
 }
 
 export function commandDescription(command: string, descriptions: string[]): string {
-    var desc = `spm ${command}`;
+    var desc = chalk.bold(`COMMAND: ${command}`);
 
     if (descriptions.length > 0) desc += `\n${chalk.green("* ")}` + descriptions.join(`\n${chalk.green("* ")}`)
 
@@ -23,4 +24,8 @@ export function commandExample(args: oclifUtilArg, examples: string[] = []): str
     for (const exp of examples) desc.push(`$ spm ${args.command} ${exp}`)
 
     return desc;
+}
+
+export function checkConfigFile(): Boolean {
+    return fs.existsSync(process.cwd() + '\\config.json');
 }

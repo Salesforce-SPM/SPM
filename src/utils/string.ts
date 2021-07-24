@@ -43,3 +43,13 @@ export function camelCase(str: string): string {
 export function warning(str: string): string {
     return chalk.bgYellow.blackBright.bold(" ! " + str + ' ')
 }
+
+export function hideString(text: string) {
+    if (!text) text = ''
+    
+    var response = '';
+
+    for (const c of text) response += '*';
+
+    return response;
+}
