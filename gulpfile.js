@@ -12,13 +12,30 @@ task('newCommand', async () => {
 
     let file = `// Generated with gulp, task: newCommand
 import { Command, flags } from '@oclif/command'
+import * as Fs from 'fs';
+import * as Utils from '../utils/'
+import * as controller from '../controller/'
+
+const commandDescription = Utils.oclif.commandDescription(
+    '${rawCommandName}',
+    [ 'Some desc' ]
+  );
+  
+  const commandExamples = Utils.oclif.commandExample(
+    { command: '${rawCommandName}', },
+    [
+      'Some example' 
+    ]
+  );
 
 export default class ${names.camelCase} extends Command {
-    static description = 'describe the command here'
+    static description = commandDescription;
+
+    static examples = commandExamples;
 
     static flags = {
         help: flags.help({ char: 'h' })
-    }
+    };
 
     // static args = []
 

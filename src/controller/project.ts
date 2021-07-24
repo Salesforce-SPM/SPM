@@ -14,8 +14,6 @@ const defaultArg: Interface.Project.ClassArgs = {
     loadConfig: false
 }
 
-
-
 export class Project {
     readonly defaultDirs: string[] = ['', '.envs', 'packages', 'logs', 'closedPackage', 'source'];
     private _path: string;

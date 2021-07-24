@@ -11,6 +11,7 @@ interface ProjectData {
   name: String,
   path: String
 }
+
 const commandDescription = Utils.oclif.commandDescription(
   'init',
   [
