@@ -2,7 +2,8 @@
 
 export interface ConfigFile {
     name: string,
-    defaultUrl: string
+    defaultUrl: string,
+    api?: string
 }
 
 export interface ClassArgs {

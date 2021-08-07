@@ -14,7 +14,8 @@ task('newCommand', async () => {
 import { Command, flags } from '@oclif/command'
 import * as Fs from 'fs';
 import * as Utils from '../utils/'
-import * as controller from '../controller/'
+import * as Controller from '../controller/'
+import * as Interface from '../interface/'
 
 const commandDescription = Utils.oclif.commandDescription(
     '${rawCommandName}',

@@ -4,11 +4,10 @@
 			"path": "."
 		},
 		{
-			"name": "Test",
-			"path": "test"
+			"path": "node_modules\\salesforce-api-connector"
 		},
 		{
-			"path": "node_modules\\salesforce-api-connector"
+			"path": "dev\\test\\testProject"
 		}
 	],
 	"settings": {

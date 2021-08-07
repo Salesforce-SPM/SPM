@@ -1,4 +1,5 @@
 {
     "name": null,
-    "defaultUrl": "https://test.salesforce.com"
+    "defaultUrl": "https://test.salesforce.com",
+    "api": "52.0"
 }

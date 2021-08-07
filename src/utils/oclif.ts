@@ -6,8 +6,8 @@ interface oclifUtilArg {
     allowNoArg?: Boolean
 }
 
-export function commandDescription(command: string, descriptions: string[]): string {
-    var desc = chalk.bold(`COMMAND: ${command}`);
+export function commandDescription(firstLine: string, descriptions: string[]): string {
+    var desc = chalk.bold(`${firstLine}`);
 
     if (descriptions.length > 0) desc += `\n${chalk.green("* ")}` + descriptions.join(`\n${chalk.green("* ")}`)
 
