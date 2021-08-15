@@ -1,26 +1,101 @@
 import * as Fs from "fs";
-import * as SalesforceAPI from "salesforce-api-connector";
 import * as Utils from "../utils";
+import * as Interface from "../interface";
+import * as Controller from "../controller";
 
-export class Environment extends SalesforceAPI.Environment {
-  private _filename: string;
+abstract class EnvironmentConfig {
+  constructor(args?: { project?: Controller.Project }) {
+    if (!args) args = {};
+    this.config = {
+      name: null,
+      url: null,
+      user: null,
+      password: null,
+      token: null,
+    };
 
-  constructor(args: SalesforceAPI.Interface.Environment.EnvironmentArgs = {}) {
-    super(args);
-    this.name = args.data.name;
+    this.project = args.project;
   }
 
-  public set name(name: string) {
-    super.name = name;
-    this._filename = Utils.string.camelCase(name) + ".json";
+  private project: Controller.Project;
+  public config: Interface.Environment.File;
+  private _path: string;
+
+  get path() {
+    return this._path;
   }
 
-  public get name() {
-    return super.name;
+  get name() {
+    return this.config.name;
   }
 
-  public get filename() {
-    return this._filename;
+  set name(name: string) {
+    this.config.name = name;
+
+    if (this.project && this.project.path) {
+      let filename = Utils.string.camelCase(name) + ".json";
+
+      this._path = `${this.project.path}\\.envs\\${filename}`;
+    }
+  }
+
+  get user() {
+    return this.config.user;
+  }
+
+  set user(user: string) {
+    this.config.user = user;
+  }
+
+  get url() {
+    return this.config.url;
+  }
+  set url(url: string) {
+    this.config.url = url;
+  }
+
+  get password() {
+    return this.config.password;
+  }
+  set password(password: string) {
+    this.config.password = password;
+  }
+
+  get token() {
+    return this.config.token;
+  }
+  set token(token: string) {
+    this.config.token = token;
+  }
+
+  get apiVersion() {
+    return this.project.apiVersion;
+  }
+}
+
+export class Environment extends EnvironmentConfig {
+  constructor(args?: {
+    path?: string;
+    options?: { loadFile?: Boolean; project?: Controller.Project; config?: Interface.Environment.File };
+  }) {
+    if (!args) args = {};
+    if (!args.options) args.options = {};
+    super({ project: args.options.project });
+
+    if (args.options.config) {
+      this.config = args.options.config;
+      this.name = this.config.name;
+    }
+
+    this.conn = new Controller.EnvironmentConnection(this);
+  }
+
+  public conn: Controller.EnvironmentConnection;
+
+  public fileExist() {
+    if (!this.path) Utils.string.errorMessage("Environment doesn't has a path!");
+
+    return Fs.existsSync(this.path);
   }
 
   public toJSON() {
@@ -29,34 +104,41 @@ export class Environment extends SalesforceAPI.Environment {
       url: this.url,
       user: this.user,
       password: this.password,
-      secretToken: this.secretToken,
-      clientId: this.clientId,
-      clientSecret: this.clientSecret,
+      secretToken: this.token,
     };
   }
 
-  static loadFile(filePath: string): Environment {
-    const file: any = JSON.parse(Fs.readFileSync(filePath).toString());
+  public save(args?: { force?: Boolean }) {
+    if (!args) args = {};
 
-    return new Environment({
-      data: {
-        name: file.name,
-        url: file.url,
-        user: file.user,
-        password: file.password,
-        secretToken: file.secretToken,
-        clientId: file.clientId,
-        clientSecret: file.clientSecret,
-      },
-    });
+    if (!this.path) Utils.string.errorMessage("Environment doesn't has a path!");
+
+    if (!args.force && this.fileExist()) Utils.string.errorMessage(this.path + " already exist");
+
+    let fileContent = JSON.stringify(this.toJSON(), null, 4);
+
+    return Fs.writeFileSync(this.path, fileContent);
   }
 
-  public save() {
-    let filePath = `${process.cwd()}\\.envs\\${this.filename}`,
-      fileContent = JSON.stringify(this.toJSON(), null, 4);
+  public async buildConn(options?: Interface.Environment.ConnOptions) {
+    this.conn = new Controller.EnvironmentConnection(this, options);
 
-    return Fs.writeFileSync(filePath, fileContent);
+    return this.conn;
   }
 
-  // public  getAccessToken = super.getAccessToken
+  public isValid(options: { ignore?: { name?: boolean } } = {}): string | boolean {
+    options.ignore = options.ignore ?? {};
+
+    let errors = [];
+
+    if (!options.ignore.name && (!this.name || this.name == "")) errors.push("name");
+    if (!this.password || this.password == "") errors.push("password");
+    if (!this.token || this.token == "") errors.push("token");
+    if (!this.url || this.url == "" || !Utils.validation.isValidURL(this.url)) errors.push("url");
+    if (!this.user || this.user == "" || !Utils.validation.isValidEmail(this.user)) errors.push("user");
+
+    let resp = errors.join(", ");
+
+    return resp == "" ? true : resp;
+  }
 }

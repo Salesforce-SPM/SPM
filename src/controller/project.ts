@@ -8,67 +8,110 @@ import * as chalk from "chalk";
 import * as defaultProjectConfig from "../templates/projectConfig.json";
 import { isAbsolute } from "path";
 
-//@ts-ignore
-import xml2js = require("xml2js");
+const defaultDirs: string[] = [
+    "",
+    ".envs", // TODO
+    "packages", // TODO
+    "logs", // TODO
+    "closedPackage", // TODO
+    "source", // TODO
+    "templates", // TODO ?
+    "scripts",
+  ],
+  endWith: string[] = ["\\", "//", "/"];
 
-const defaultArg: Interface.Project.ClassArgs = {
-  config: defaultProjectConfig,
-  loadConfig: false,
-};
+abstract class ProjectConfig {
+  constructor() {}
 
-const defaultDirs: string[] = ["", ".envs", "packages", "logs", "closedPackage", "source", "templates"];
+  public config: Interface.Project.File;
 
-const jsonDefaultPackage = {
-  Package: {
-    $: { xmlns: "http://soap.sforce.com/2006/04/metadata" },
-    version: "{{API_VERSION}}",
-  },
-};
-var builder = new xml2js.Builder();
-delete builder.options.xmldec.standalone;
-var defaultPackage = builder.buildObject(jsonDefaultPackage);
+  protected _path: string;
+  protected configFile: string;
 
-export class Project {
-  private _path: string;
-  public config: Interface.Project.ConfigFile;
-  private configFile: string;
+  get name() {
+    this.checkConfig();
+    return this.config.name;
+  }
 
-  constructor(args: Interface.Project.ClassArgs = null) {
-    // TODO set default api version
+  /**
+   * @param {string} [name='string']
+   * @memberof ProjectConfig
+   */
+  set name(name: string) {
+    this.checkConfig();
 
-    if (!args) args = defaultArg;
-    else args = { ...defaultArg, ...args };
-
-    this.path = args.path ?? process.cwd();
-
-    if (args.loadConfig) {
-      this.loadConfig();
-    } else {
-      this.config = args.config ?? defaultProjectConfig;
-      if (args.name) this.name = args.name;
+    if (name && name != "") {
+      this.config.name = name.trim();
     }
   }
 
-  get name() {
-    return this.config.name;
-  }
-  set name(name: string) {
-    this.config.name = name.trim();
-  }
-
   get path() {
+    this.checkConfig();
+
     return this._path;
   }
-  set path(path: string) {
+
+  /**
+   * @param {string | undefined} [path='string | undefined']
+   * @memberof ProjectConfig
+   */
+  set path(path: string | undefined) {
+    this.checkConfig();
+
+    if (!path || path == "") Utils.string.errorMessage(`"${path}" isn't a valid path!`);
+
     this._path = path.trim();
-    this.configFile = this._path + "\\config.json";
+
+    let foundedEndWith = false;
+
+    for (const i of endWith) {
+      if (this._path.endsWith(i)) {
+        foundedEndWith = true;
+        break;
+      }
+    }
+
+    while (this._path.includes("/")) this._path = this._path.replace("/", "\\");
+    while (this._path.includes("\\\\")) this._path = this._path.replace("\\\\", "\\");
+
+    this.configFile = this._path + (foundedEndWith ? "config.json" : "\\config.json");
   }
 
-  get api() {
-    return this.config.api;
+  get apiVersion() {
+    this.checkConfig();
+
+    return this.config.apiVersion;
   }
-  set api(apiVersion: string) {
-    this.config.api = apiVersion;
+
+  set apiVersion(apiVersion: string) {
+    this.checkConfig();
+
+    this.config.apiVersion = apiVersion;
+  }
+
+  private checkConfig() {
+    if (this.config == null) {
+      this.config = {
+        name: null,
+        defaultUrl: "https://test.salesforce.com",
+        apiVersion: "52.0",
+      };
+    }
+  }
+}
+
+export class Project extends ProjectConfig {
+  constructor(args?: { path?: string; options?: Interface.Project.ProjectOptions }) {
+    if (!args) args = { options: {} };
+
+    super();
+
+    if (args.path) {
+      this._path = args.path;
+      this.configFile = this._path + "\\config.json";
+    }
+
+    if (args.options.loadConfig) this.loadConfig();
   }
 
   public isValid(preventException: Boolean = false): Boolean {
@@ -78,35 +121,56 @@ export class Project {
     else if (this._path == "") message = chalk.bold.red("Invalid project path");
     else if (!Path.isAbsolute(this._path)) message = chalk.bold.red(`"${this._path}" isn't a valid path!`);
 
-    if (preventException) console.log(message);
+    if (preventException && message != "") console.log(message);
     else if (message != "") throw new Error(message);
 
     return message == "";
   }
 
-  public create(args: Interface.Project.CM_Create = {}): Boolean {
+  /**
+   * @param {Interface.Project.CreationArguments} [args={}]
+   * @return {*}  {Boolean}
+   * @memberof Project
+   */
+  public create(args: Interface.Project.CreationArguments = {}): Boolean {
     this.isValid();
+    args.verbose = args.verbose ?? true;
 
     let saveAt: string = args.path ?? this.path;
+
     if (!saveAt) {
       Utils.string.errorMessage("Project must have a destination path: Ex: C:\\testProject");
     }
 
-    if (Fs.existsSync(saveAt)) {
+    saveAt = saveAt.replace("\\", "//");
+
+    if (!args.force && Fs.existsSync(saveAt)) {
       Utils.string.errorMessage(`Dir at ${saveAt} already exist!`);
     }
 
-    for (const dir of defaultDirs) Fs.mkdirSync(`${saveAt}\\${dir}`);
+    console.log(chalk.bold("Created: "));
 
-    this.saveConfig();
+    for (const dir of defaultDirs) {
+      let dirPath = `${saveAt}\\${dir}`;
+
+      if (!Fs.existsSync(dirPath)) {
+        Fs.mkdirSync(dirPath);
+        if (args.verbose) Utils.string.printPretty([["", dirPath.split("\\").join("/")]], false);
+      }
+    }
+
+    this.saveConfig({ force: args.force });
 
     return true;
   }
 
-  public saveConfig(path: string = this.configFile, force: Boolean = false): Boolean {
-    path = path ?? this.configFile;
+  public saveConfig(options: Interface.Project.SaveConfigArguments = {}): Boolean {
+    options.path = options.path ?? this.configFile;
+    options.force = options.force ?? false;
 
-    if (!Path.isAbsolute(path)) Utils.string.errorMessage(`"${path}" isn't a valid path!`);
+    let { path, force } = options;
+
+    if (!Path.isAbsolute(path) || !path.endsWith(".json")) Utils.string.errorMessage(`"${path}" isn't a valid path!`);
     else if (!force && this.configFileExist()) Utils.string.errorMessage(`"${path}" already exist`);
 
     Fs.writeFileSync(path, JSON.stringify(this.config, null, 4));
@@ -118,7 +182,7 @@ export class Project {
     return Fs.existsSync(this.configFile);
   }
 
-  public loadConfig(): Interface.Project.ConfigFile {
+  public loadConfig(): Interface.Project.File {
     if (!this.configFileExist()) Utils.string.errorMessage(`Missing file "${this.configFile}".`);
 
     try {
@@ -128,6 +192,10 @@ export class Project {
     }
 
     return this.config;
+  }
+
+  static get(path: string) {
+    const project = new Project({ path, options: { loadConfig: true } });
   }
 
   // TODO Save project on informed folder as a new project

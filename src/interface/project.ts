@@ -1,21 +1,27 @@
-
-
-export interface ConfigFile {
-    name: string,
-    defaultUrl: string,
-    api?: string
+export interface File {
+  name: string;
+  defaultUrl: string;
+  apiVersion?: string;
 }
 
-export interface ClassArgs {
-    path?: string,
-    name?: string,
-    config?: ConfigFile
-    loadConfig?: Boolean
+export interface ProjectOptions {
+  name?: string;
+  // config?: ConfigFile;
+  // useDefaultOptions?: Boolean;
+  loadConfig?: Boolean;
 }
 
+/**
+ * @param {string}path  Absolute path where the project should be created. Optional
+ * @param {Boolean}force , if true, will overwrite a existing project. Optional
+ */
+export interface CreationArguments {
+  path?: string;
+  force?: Boolean;
+  verbose?: Boolean;
+}
 
-// Class Methods
-// Private
-export interface CM_Create {
-    path?: string,
+export interface SaveConfigArguments {
+  path?: string;
+  force?: Boolean;
 }

@@ -17,6 +17,8 @@ import * as Utils from '../utils/'
 import * as Controller from '../controller/'
 import * as Interface from '../interface/'
 
+const cmd = "${rawCommandName}";
+
 const commandDescription = Utils.oclif.commandDescription(
     '${rawCommandName}',
     [ 'Some desc' ]

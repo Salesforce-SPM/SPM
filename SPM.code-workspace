@@ -4,9 +4,6 @@
 			"path": "."
 		},
 		{
-			"path": "node_modules\\salesforce-api-connector"
-		},
-		{
 			"path": "dev\\test\\testProject"
 		}
 	],

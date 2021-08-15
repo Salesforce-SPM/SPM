@@ -2,10 +2,11 @@
 import { Command, flags } from "@oclif/command";
 import * as Fs from "fs";
 import * as Utils from "../../utils";
-import * as controller from "../../controller";
-import inquirer = require("inquirer");
-import * as defaultEnv from "../../templates/environmentFile.json";
-import chalk = require("chalk");
+import * as Controller from "../../controller";
+import * as chalk from "chalk";
+import { color as printColored } from "../../utils/string";
+
+import { EnvironmentMenu } from "../../private/menu";
 
 const useNameArg: string[] = ["-d", "-u (not implemented)", "-s (not implemented)"];
 
@@ -29,130 +30,121 @@ export default class Environment extends Command {
     force: flags.boolean({
       char: "f",
       description: `Force command: if a file with the same name already exists, force will overwrite it without confirm`,
+      dependsOn: ["name", "url", "user", "secretToken", "password"],
     }),
     name: flags.string({ description: "Optional" }), // TODO do a better description
     url: flags.string({ description: "Optional" }), // TODO do a better description
     user: flags.string({ description: "Optional" }), // TODO do a better description
     secretToken: flags.string({ description: "Optional" }), // TODO do a better description
     password: flags.string({ description: "Optional" }), // TODO do a better description
-    clientID: flags.string({ description: "Optional" }), // TODO do a better description
-    clientSecret: flags.string({ description: "Optional" }), // TODO do a better description
   };
 
-  private environment: controller.Environment;
-  private contextArgs: any = {};
-  private contextFlags: any = {};
+  private environment: Controller.Environment;
+  private args: any;
+  private flags: {
+    force: boolean;
+    name: string;
+    url: string;
+    user: string;
+    secretToken: string;
+    password: string;
+  };
 
-  async run() {
+  private menu: EnvironmentMenu;
+
+  private doInit() {
     const { args, flags } = this.parse(Environment);
+    flags.force = flags.force ?? false;
 
-    this.doInit(args, flags);
+    const project = new Controller.Project({
+      path: process.cwd(),
+      options: { loadConfig: true },
+    });
 
-    this.environment = new controller.Environment({
-      data: {
-        name: await this.getEnvName(),
-        user: await this.getEnvUser(),
-        url: await this.getEnvURL(),
-        password: await this.getEnvPassword(),
-        secretToken: await this.getEnvSecretToken(),
-        clientId: await this.getEnvClientId(),
-        clientSecret: await this.getEnvClientSecret(),
+    this.flags = Utils.validation.sanitizeJson(flags);
+    this.args = Utils.validation.sanitizeJson(args);
+
+    if (this.flags.user && !Utils.validation.isValidEmail(this.flags.user)) {
+      Utils.string.errorMessage(this.flags.user + " isn't a valid username!");
+    }
+    if (this.flags.url && !Utils.validation.isValidURL(this.flags.url)) {
+      Utils.string.errorMessage(this.flags.url + " isn't a valid URL!");
+    }
+
+    this.environment = new Controller.Environment({
+      options: {
+        config: {
+          name: this.flags.name ?? null,
+          url: this.flags.url ?? project.config.defaultUrl,
+          user: this.flags.user ?? "",
+          token: this.flags.secretToken ?? "",
+          password: this.flags.password ?? "",
+        },
+        project,
       },
     });
-    this.printEnv();
 
-    await this.execute();
+    this.menu = new EnvironmentMenu(this.environment, {
+      text: "Setup new environment",
+      returnText: chalk.bold("Continue"),
+      deletable: false,
+    });
   }
 
-  doInit(args: any, flags: any) {
-    for (const key in args) if (args[key] == "") delete args[key];
-    for (const key in flags) if (flags[key] == "") delete flags[key];
+  async run() {
+    this.doInit();
 
-    if (!Utils.oclif.checkConfigFile()) Utils.string.errorMessage("Missing config.json");
+    if (!this.flags.force) {
+      let envIsValid: Boolean | string = false;
 
-    if (flags.user && !Utils.validation.isValidEmail(flags.user))
-      Utils.string.errorMessage(flags.user + " isn't a valid username!");
-    if (flags.url && !Utils.validation.isValidURL(flags.url))
-      Utils.string.errorMessage(flags.url + " isn't a valid URL!");
+      do {
+        await this.menu.start();
+        envIsValid = this.environment.isValid();
 
-    this.contextArgs = args;
-    this.contextFlags = flags;
+        if (envIsValid != true) Utils.string.color.red("Error, invalid: " + envIsValid);
+      } while (envIsValid != true);
+    } else if (this.environment.isValid() != true) {
+      Utils.string.color.red("Error, invalid environment");
+    }
+
+    if (!(await this.confirmCreation())) return this.cancelCreation();
+
+    this.environment.save({ force: true });
+
+    console.log(`\n${chalk.bold(this.environment.name)} environment created at ./.envs`);
   }
 
-  printEnv() {
-    console.log(chalk.bold("New environment:"));
+  private async confirmCreation() {
+    Utils.string.color.bold(`${this.flags.force ? "" : "==============\n"}New environment:`);
 
-    Utils.string.printPretty([
-      ["Name", this.environment.name],
-      ["User", this.environment.user],
-      ["URL", this.environment.url],
-      ["Password", Utils.string.hideString(this.environment.password)],
-      ["Token", this.environment.secretToken],
-      ["clientId", this.environment.clientId],
-      ["clientSecret", this.environment.clientSecret + "\n"],
-    ]);
+    let envJson = this.environment.toJSON();
+    envJson.password = Utils.string.hideString(envJson.password);
+
+    Utils.string.printTree(envJson);
+
+    let confirm: Boolean = false;
+    if (this.flags.force) {
+      printColored.yellow(`Environment creation auto confirmed`);
+
+      if (this.environment.fileExist()) {
+        Utils.string.warning(`${this.environment.path} alread exists, it was overwrited due to --force.`);
+      }
+
+      return true;
+    }
+
+    if (!(await Utils.inquirer.confirm(`Create new environment?`, { defaultValue: true }))) return false;
+
+    if (this.environment.fileExist()) {
+      return await Utils.inquirer.confirm(`${this.environment.path} alread exists, overwrite it?`, {
+        defaultValue: true,
+      });
+    }
+
+    return true;
   }
 
-  async getEnvName() {
-    return (
-      this.contextArgs.name ??
-      this.contextFlags.name ??
-      (await Utils.inquirer.input("Inform environment name", "Must inform a valid environment name"))
-    );
-  }
-
-  async getEnvUser() {
-    return (
-      this.contextFlags.user ?? (await Utils.inquirer.email("Inform the user name", "Must inform a valid username"))
-    );
-  }
-
-  async getEnvURL() {
-    return (
-      this.contextFlags.url ??
-      (await Utils.inquirer.url("Inform the environment URL", "Must inform a valid URL", "https://test.salesforce.com"))
-    );
-  }
-
-  async getEnvPassword() {
-    return (
-      this.contextFlags.password ??
-      (await Utils.inquirer.input("Inform environment password", "Must inform a password"))
-    );
-  }
-
-  async getEnvSecretToken() {
-    return (
-      this.contextFlags.secretToken ?? (await Utils.inquirer.input("Inform environment token", "Must inform a token"))
-    );
-  }
-
-  async getEnvClientId() {
-    return (
-      this.contextFlags.clientID ??
-      (await Utils.inquirer.input("Inform environment connect app client id", "Must inform a client id"))
-    );
-  }
-
-  async getEnvClientSecret() {
-    return (
-      this.contextFlags.clientSecret ??
-      (await Utils.inquirer.input("Inform environment connect app client secret", "Must inform a client secret"))
-    );
-  }
-
-  async execute() {
-    let fileExist = Fs.existsSync(`${process.cwd()}\\.envs\\${this.environment.filename}`);
-    let confirmOverwrite = this.contextFlags.force ?? false;
-
-    if (fileExist && !confirmOverwrite) {
-      confirmOverwrite = await Utils.inquirer.confirm(`File ${this.environment.filename} already exist, overwrite it?`);
-    } else confirmOverwrite = true;
-
-    if (!confirmOverwrite) return console.log(Utils.string.warning("Canceled"));
-
-    this.environment.save();
-
-    console.log(`${chalk.bold(this.environment.name)} created on .envs as ${chalk.bold(this.environment.filename)}`);
+  public cancelCreation() {
+    Utils.string.errorMessage("Environment creation canceled");
   }
 }

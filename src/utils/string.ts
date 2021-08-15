@@ -1,5 +1,7 @@
+export * as color from "./chalk";
 import * as chalk from "chalk";
 import * as Interface from "../interface";
+import * as color from "./chalk";
 
 //@ts-ignore
 import xml2js = require("xml2js");
@@ -14,16 +16,20 @@ interface sanitizeStringOptions {
   separator?: string;
 }
 
-export function printPretty(list: string[][]) {
+export function printPretty(list: string[][], separator = true) {
   let message = "";
 
-  for (const item of list) message += `${chalk.green("* ")}${chalk.bold(`${item[0]}:`)} ${item[1]}\n`;
+  for (const item of list)
+    message += `${chalk.green("* ")}${chalk.bold(`${item[0]}${separator ? ": " : ""}`)}${item[1]}\n`;
 
   console.log(message.substring(0, message.length - 1));
 }
 
-export function errorMessage(text: string): string {
-  throw new Error(chalk.red.bold(text));
+export function errorMessage(text: string, preventError: Boolean = false) {
+  text = color.red(text, false);
+
+  if (preventError) console.log(text);
+  else throw new Error(text);
 }
 
 export function sanitizeString(str: String, options: sanitizeStringOptions = {}) {
@@ -59,6 +65,7 @@ export function sanitizeString(str: String, options: sanitizeStringOptions = {})
 }
 
 export function camelCase(str: string): string {
+  str = str ?? "";
   str = sanitizeString(str)
     .replace(/\-/g, " ")
     .replace(/\-/g, " ")
@@ -69,7 +76,7 @@ export function camelCase(str: string): string {
 }
 
 export function warning(str: string): string {
-  return chalk.bgYellow.blackBright.bold(" ! " + str + " ");
+  return color.yellow("! " + str + " ");
 }
 
 export function hideString(text: string) {
@@ -93,9 +100,28 @@ export function parseXML2JSON(str: string) {
 }
 
 export function parseJSON2XML(pkg: Interface.Package.PackageXML) {
-  let xmlFile = XMLBuilder.buildObject(pkg).replace("</version>", "</version>\n").replace(/\<\/types\>/, "</types>\n");
+  let xmlFile = XMLBuilder.buildObject(pkg)
+    .replace("</version>", "</version>\n")
+    .replace(/\<\/types\>/, "</types>\n");
 
   xmlFile += `\n\n\n<!-- https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/meta_types_list.htm -->`;
 
   return xmlFile;
+}
+
+export function printTree(input: any, level: number = 0) {
+  let l = chalk.green.bold(" |");
+
+  let root = l;
+  for (let i = 0; i < level; i++) root += " " + l;
+  root += chalk.green.bold("-");
+
+  for (const key in input) {
+    if (typeof input[key] != "object") {
+      console.log(`${root} ${chalk.bold(key)}: ` + input[key]);
+    } else {
+      console.log(`${root} ${chalk.bold(key)}`);
+      printTree(input[key], level + 1);
+    }
+  }
 }
