@@ -5,7 +5,9 @@ import * as Controller from "../../controller";
 import chalk = require("chalk");
 import * as Interface from "../../interface";
 
-const defaultApiVersion = "52.0";
+import spmConfig = require("../../config.json");
+
+const defaultApiVersion = spmConfig.salesforceApi;
 
 export default class Project extends Command {
   static description = "Create a new package";
@@ -18,38 +20,121 @@ export default class Project extends Command {
     force: flags.boolean({
       char: "f",
       description: "Won't confirm package creation.",
+      dependsOn: ["name"],
     }),
-    hasDestructive: flags.boolean({
-      char: "d",
-      default: false,
-      description: "If informed, will create a destructive xml file on package dir.",
-    }),
-    template: flags.string({ char: "t" }),
+    // TODO creat destructive routine
+    // hasDestructive: flags.boolean({
+    //   char: "d",
+    //   default: false,
+    //   description: "If informed, will create a destructive xml file on package dir.",
+    // }),
+    template: flags.string({ char: "t", multiple: true }),
     version: flags.string({
       char: "v",
       description: `Set package API version, default is ${defaultApiVersion}`,
     }),
   };
 
-  private project: Controller.Project = null;
-  private examples: any = null;
+  private project: Controller.Project;
+  private args: any;
+  private flags: any;
+  private package: Controller.Package;
+  private searchTemplate: boolean = false;
+  private projectTemplates: any = {};
 
-  private getProject() {
-    if (!this.project) this.project = new Controller.Project({ loadConfig: true });
+  async run() {
+    this.doInit();
+
+    for (let tp of this.flags.templates.entries()) this.package.insertExample(tp[0]);
+
+    await this.getName();
+
+    // TODO checa duplicado
+    if (Fs.existsSync(`${this.package.path}`) && !this.flags.force) {
+      this.warn(`Package ${this.package.name} already exists!`);
+
+      return;
+    }
+
+    if (this.searchTemplate || true) await this.getExampleOptions();
+
+    this.package.save({ overwrite: true });
+    this.log(`Package ${this.package.name} created at ./packages/${this.package.name}`);
+
+    console.log(this.log);
+  }
+
+  private doInit() {
+    const { args, flags } = this.parse(Project);
+
+    this.project = new Controller.Project({ path: process.cwd(), options: { loadConfig: true } });
+
+    this.args = Utils.validation.sanitizeJson(args);
+    this.flags = Utils.validation.sanitizeJson(flags);
+
+    let templates = new Set<string>(this.flags.template ?? []);
+    if (templates.size > 0) {
+      this.projectTemplates = this.project.getTemplate("packageExamples.json");
+
+      templates.forEach((tp) => {
+        if (tp == "y") {
+          this.searchTemplate = true;
+          templates.delete("y");
+        } else if (this.projectTemplates[tp] == null) {
+          this.searchTemplate = true;
+          templates.delete(tp);
+          this.warn(`Package template "${tp}" not founded`);
+        }
+      });
+    }
+
+    this.package = new Controller.Package({
+      dirname: Utils.string.sanitizeString(this.flags.name, { preserveCaps: true }),
+      options: { project: this.project, version: this.flags.version },
+    });
+
+    this.flags.templates = templates;
+  }
+
+  private async getName() {
+    if (!this.flags.name && this.flags.force) {
+      this.error(
+        'Process has force=true but no name was informed (spm package:new "Some Project Name" -f). See spm package:new -h'
+      );
+    }
+
+    this.package.name = this.flags.name;
+
+    if (!this.package.name) {
+      let message = "Project name";
+      this.project.name = await Utils.inquirer.input({ message, error: "Package must have a name" });
+    }
+  }
+
+  private async getExampleOptions() {
+    if (this.flags.force) return this.warn("Can't use example templeta when --force was informed");
+
+    let choices: Array<string | { name: string; value: string }> = [];
+
+    for (let i in this.projectTemplates) {
+      if (this.projectTemplates[i].label) choices.push({ name: this.projectTemplates[i].label, value: i });
+      else choices.push(i);
+    }
+
+    let message = `Select exemples to insert on ${this.package.name}`;
+    let picked: Array<string> = <Array<string>>await Utils.inquirer.check({ message, choices, searchable: true });
+
+    for (let tp of picked) this.package.insertExample(tp);
+  }
+}
+
+/*private getProject() {
+    if (!this.project) this.project = new Controller.Project(process.cwd(), { loadConfig: true });
 
     return this.project;
   }
 
-  async getName(name: string) {
-    if (name == "") {
-      name = null;
-      console.log(Utils.string.warning("Informed a invalid package name."));
-    }
-
-    name = name ?? (await Utils.inquirer.input("Package name: ", "Inform a valid package name"));
-
-    return Utils.string.sanitizeString(name, { preserveCaps: true });
-  }
+  
 
   async getVersion(version: string) {
     if (version == "" || !version) {
@@ -79,31 +164,17 @@ export default class Project extends Command {
     };
   }
 
-  private getExampleOptions() {
-    if (!this.examples) this.examples = JSON.parse(Fs.readFileSync("./templates/packageExamples.json").toString());
-
-    let choices: Array<string | { name: string; value: string }> = [];
-    for (let i in this.examples) {
-      if (this.examples[i].label) choices.push({ name: this.examples[i].label, value: i });
-      else choices.push(i);
-    }
-
-    return choices;
-  }
+ 
 
   private async pickExamples(pkgName: string, flags: any) {
     let types: Array<{ name: string; members: string[] }> = [];
 
     if (!Fs.existsSync("./templates/packageExamples.json") || !flags.template) return types;
 
-    let message = `Select exemples to insert on ${pkgName}`;
+   
     let choices = this.getExampleOptions();
 
-    let picked: Set<string> = new Set(
-      flags.template == "y"
-        ? await Utils.inquirer.check({ message, choices, searchable: true })
-        : flags.template.split(";")
-    );
+    
 
     for (const example of picked) {
       let e = this.getExample(example);
@@ -135,28 +206,4 @@ export default class Project extends Command {
     packageTemplate.Package.version = [flags.version];
 
     return Utils.string.parseJSON2XML(packageTemplate);
-  }
-
-  async run() {
-    const { args, flags } = this.parse(Project);
-
-    this.getProject();
-
-    flags.name = await this.getName(flags.name);
-    flags.version = await this.getVersion(flags.version);
-    flags.hasDestructive = flags.hasDestructive ?? false;
-
-    if (Fs.existsSync(`./packages/${flags.name}`) && !flags.force) {
-      console.log(Utils.string.errorMessage(`Package ${flags.name} already exists!`));
-
-      return;
-    }
-
-    let xmlFile = await this.buildFile(flags);
-
-    if (!Fs.existsSync(`./packages/${flags.name}`)) Fs.mkdirSync(`./packages/${flags.name}`);
-    Fs.writeFileSync(`./packages/${flags.name}/package.xml`, xmlFile);
-
-    console.log(`Package ${flags.name} created at ./packages/${flags.name}`);
-  }
-}
+  }*/

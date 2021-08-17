@@ -64,9 +64,9 @@ export function sanitizeString(str: String, options: sanitizeStringOptions = {})
   return r;
 }
 
-export function camelCase(str: string): string {
+export function camelCase(str: string, options: sanitizeStringOptions = {}): string {
   str = str ?? "";
-  str = sanitizeString(str)
+  str = sanitizeString(str, options)
     .replace(/\-/g, " ")
     .replace(/\-/g, " ")
     .replace(/\s[a-z]/g, (s) => s.toUpperCase())

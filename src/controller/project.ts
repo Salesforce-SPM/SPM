@@ -4,21 +4,26 @@ import * as Interface from "../interface";
 import * as Path from "path";
 import * as chalk from "chalk";
 //@ts-ignore
-
-import * as defaultProjectConfig from "../templates/projectConfig.json";
+// import * as defaultProjectConfig from "../templates/projectConfig.json";
 import { isAbsolute } from "path";
 
+import spmConfig = require("../config.json");
+
 const defaultDirs: string[] = [
-    "",
-    ".envs", // TODO
-    "packages", // TODO
-    "logs", // TODO
-    "closedPackage", // TODO
-    "source", // TODO
-    "templates", // TODO ?
-    "scripts",
-  ],
-  endWith: string[] = ["\\", "//", "/"];
+  "",
+  ".envs",
+  "packages",
+  "logs", // TODO
+  "closedPackage", // TODO
+  "source", // TODO
+  "templates", // TODO ?
+  "scripts",
+];
+const endWith: string[] = ["\\", "//", "/"];
+const defaultExample = {
+  ApexClass: "SomeClassname",
+  CustomField: ["Account.name", "SomeCustomObject__c.SomeCustomField__c"],
+};
 
 abstract class ProjectConfig {
   constructor() {}
@@ -94,7 +99,7 @@ abstract class ProjectConfig {
       this.config = {
         name: null,
         defaultUrl: "https://test.salesforce.com",
-        apiVersion: "52.0",
+        apiVersion: spmConfig.salesforceApi,
       };
     }
   }
@@ -161,6 +166,9 @@ export class Project extends ProjectConfig {
 
     this.saveConfig({ force: args.force });
 
+    //defaultExample
+    Fs.writeFileSync(`${saveAt}\\templates\\packageExamples.json`, JSON.stringify(defaultExample, null, 4));
+
     return true;
   }
 
@@ -192,6 +200,14 @@ export class Project extends ProjectConfig {
     }
 
     return this.config;
+  }
+
+  public getTemplate(fileName: string) {
+    let rawFile = Fs.readFileSync(`${this.path}\\templates\\${fileName}`).toString();
+
+    if (fileName.endsWith(".json")) return JSON.parse(rawFile);
+
+    return rawFile;
   }
 
   static get(path: string) {
