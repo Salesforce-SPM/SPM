@@ -4,6 +4,9 @@ import inquirer = require("inquirer");
 import { isValidURL, isValidEmail } from "./validation";
 import { errorMessage } from "./string";
 
+import * as Fs from "fs";
+import * as Path from "path";
+
 inquirer.registerPrompt("search-list", require("inquirer-search-list"));
 inquirer.registerPrompt("search-checkbox", require("inquirer-search-checkbox"));
 
@@ -98,10 +101,12 @@ export async function confirm(message: string, options?: confirmOptions) {
   options = options ?? {};
 
   options.defaultValue = options.defaultValue ?? false;
-  if (!options.answers) options.answers = { yes: "Confirm", no: "Cancel" };
-
-  if (!options.answers.yes) options.answers.yes = "Confirm";
-  if (!options.answers.no) options.answers.yes = "Cancel";
+  if (!options.answers) {
+    options.answers = { yes: "Confirm", no: "Cancel" };
+  } else {
+    options.answers.yes = options.answers.yes ?? "Confirm";
+    options.answers.no = options.answers.no ?? "Cancel";
+  }
 
   let { defaultValue, answers } = options;
 
@@ -140,4 +145,38 @@ export async function password(args: inputOptions): Promise<string> {
   let { message, error, defaultValue, validate: aditionalValidation } = args;
 
   return (await inquirer.prompt({ type: "password", name: "resp", default: defaultValue, message })).resp;
+}
+
+export async function pickEnvironment(projectPath: string, message: string = "Select a environment"): Promise<string> {
+  let choices = [];
+
+  for (const env of Fs.readdirSync(Path.join(projectPath, ".envs"), { withFileTypes: true })) {
+    if (env.isDirectory() || !env.name.endsWith(".json")) continue;
+
+    let envFile = JSON.parse(Fs.readFileSync(Path.join(projectPath, ".envs", env.name)).toString());
+
+    choices.push({ name: `${envFile.name} (${env.name})`, value: env.name });
+  }
+
+  if (choices.length == 0) return null;
+
+  choices.push({ name: `Cancel`, value: "return" });
+
+  return <string>await list(message, choices, true);
+}
+
+export async function pickPackage(projectPath: string, message: string = "Select a package"): Promise<string> {
+  let choices = [];
+
+  for (const pkg of Fs.readdirSync(Path.join(projectPath, "packages"), { withFileTypes: true })) {
+    if (!pkg.isDirectory()) continue;
+
+    choices.push(pkg.name);
+  }
+
+  if (choices.length == 0) return null;
+
+  choices.push({ name: `Cancel`, value: "return" });
+
+  return <string>await list(message, choices, true);
 }

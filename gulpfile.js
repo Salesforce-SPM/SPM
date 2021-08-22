@@ -1,11 +1,44 @@
-const fs = require('fs'),
-    { task, src, dest, pipe } = require('gulp'),
-    inquirer = require('inquirer'),
-    ChildProcess = require('child_process');
+const gulp = require('gulp');
+
+class SPMCommand {
+    args = [];
+
+    constructor(command) {
+        this.command = command
+    }
+
+    addArg(flag, arg) {
+        if (arg) {
+            if (flag.length > 1) {
+                this.args.push(`--${flag}=${arg}`)
+            } else this.args.push(`-${flag}=${arg}`)
+        } else {
+            if (flag.length > 1) {
+                this.args.push(`--${flag}`)
+            } else {
+                this.args.push(`-${flag}`)
+            }
+        }
+    }
+
+    build() {
+        let response = this.command;
+
+        for (const arg of this.args) {
+            response += ` ${arg}`
+        }
+
+        return `..\\..\\runSPM.bat ${response}`
+    }
+}
 
 
 
-task('newCommand', async () => {
+gulp.task('newCommand', async () => {
+    const fs = require('fs'),
+        inquirer = require('inquirer'),
+        ChildProcess = require('child_process');
+
     let rawCommandName = (await inquirer.prompt({ message: 'Command name: ', type: "input", name: "resp" })).resp.trim().toLowerCase();
 
     let names = parseName(rawCommandName)
@@ -62,8 +95,87 @@ export default class ${names.camelCase} extends Command {
         let regular = camelCase.charAt(0).toLocaleLowerCase() + camelCase.slice(1)
 
         return { regular, camelCase }
-
-        // commandNameUpperCase = commandName.charAt(0).toUpperCase() + commandName.slice(1);
-
     }
+})
+
+gulp.task('createPackage', async () => {
+    const inquirer = require('inquirer')
+    require('dotenv').config();
+
+    console.log('0', 'nothing');
+    console.log('1', 'name only');
+
+
+
+    let command = 'package:new '
+
+    let scenario = (await inquirer.prompt({ message: 'scenario:', type: 'input', name: 'resp' })).resp;
+    let pkgName = process.env.packageName
+
+    switch (scenario) {
+        case '1':
+            if (process.env.packageName) command += `--name=${process.env.packageName}`
+    }
+
+    console.log('running ' + command);
+    process.chdir('./dev/test/testProject')
+
+    await require('child_process').exec(`./dev/runSPM.bat ${command}`)
+})
+
+gulp.task('create:environment', async () => {
+    let command = new SPMCommand('environment:new');
+    require('dotenv').config();
+
+    command.addArg('name', `"${process.env.environmentName}"`)
+    command.addArg('user', `"${process.env.user}"`)
+    command.addArg('url', `"${process.env.url}"`)
+    command.addArg('secretToken', `"${process.env.secretToken}"`)
+    command.addArg('password', `"${process.env.password}"`)
+    command.addArg('f')
+
+    let cmd = command.build()
+
+    console.log('running ' + cmd);
+    process.chdir('dev/test/testProject')
+
+    return await require('child_process').exec(cmd, {}, (err) => { console.log({ err }); });
+})
+
+
+gulp.task('retrieve:environment', async () => {
+    const inquirer = require('inquirer');
+
+    console.log('running environment:new');
+
+    let rerun = false;
+
+    let command = new SPMCommand('environment:new');
+    require('dotenv').config();
+
+    command.addArg('e', `"${process.env.environmentName}"`)
+    command.addArg('p', `"${process.env.packageName}"`)
+    command.addArg('f')
+
+    let cmd = command.build();
+
+    console.log('running ' + cmd);
+    process.chdir('dev/test/testProject')
+
+
+    do {
+
+        try {
+            const pcss = require('child_process').exec(cmd, {})
+
+            pcss.on('message', (msg) => console.log({ msg }))
+
+        } catch (error) {
+            console.log(error);
+        }
+
+        rerun = false //(await inquirer.prompt({ message: 'Run again?', type: 'confirm', name: 'resp' })).resp;
+    } while (rerun);
+
+    return true;
 })

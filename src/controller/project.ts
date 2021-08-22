@@ -109,6 +109,8 @@ export class Project extends ProjectConfig {
   constructor(args?: { path?: string; options?: Interface.Project.ProjectOptions }) {
     if (!args) args = { options: {} };
 
+    args.options = args.options ?? {};
+
     super();
 
     if (args.path) {

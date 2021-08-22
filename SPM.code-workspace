@@ -19,6 +19,19 @@
 		],
 		"workbench.colorCustomizations": {
 			"editorRuler.foreground": "#ff408130"
-		}
+		},
+		"files.exclude": {
+			"**/.git": true,
+			"**/.svn": true,
+			"**/.hg": true,
+			"**/CVS": true,
+			"**/.DS_Store": true,
+			"**/.classpath": true,
+			"**/.project": true,
+			"**/.settings": true,
+			"**/.factorypath": true,
+			"node_modules": true
+		},
+		"explorerExclude.backup": null
 	}
 }

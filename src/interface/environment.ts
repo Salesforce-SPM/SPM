@@ -4,7 +4,7 @@ export interface File {
   user: string;
   password: string;
   token: string;
+  secretToken?: string;
 }
 
-export interface ConnOptions {
-}
+export interface ConnOptions {}

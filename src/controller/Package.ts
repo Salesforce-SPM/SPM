@@ -5,12 +5,13 @@ import spmConfig = require("../config.json");
 //@ts-ignore
 import xml2js = require("xml2js");
 import { sanitizeString } from "../utils/string";
+import * as Path from "path";
 
 interface PackageArgs {
   dirname?: string;
   options?: {
     project?: Controller.Project;
-    templates?: Array<string>; // TODO
+    templates?: Array<string>;
     hasDestructive?: boolean;
     version?: string;
   };
@@ -26,7 +27,7 @@ interface xmlFile {
 }
 export class Package {
   private dirname: string;
-  private project: Controller.Project;
+  private _project: Controller.Project;
   private hasDestructive: boolean;
 
   private xmlFile: xmlFile = {
@@ -41,14 +42,14 @@ export class Package {
   constructor(args: PackageArgs = {}) {
     args.options = args.options ?? {};
     this.name = args.dirname;
-    this.project = args.options.project;
+    this._project = args.options.project;
 
     if (args.options.version) this.version = args.options.version;
-    else if (this.project != null) this.version = this.project.apiVersion ?? spmConfig.salesforceApi;
+    else if (this._project != null) this.version = this._project.apiVersion ?? spmConfig.salesforceApi;
   }
 
   get path() {
-    return `${this.project.path}\\packages\\${this.dirname}`;
+    return `${this._project.path}\\packages\\${this.dirname}`;
   }
 
   get version() {
@@ -68,6 +69,10 @@ export class Package {
     this.xmlFile.Package.fullName = this.dirname;
   }
 
+  set project(project: Controller.Project) {
+    this._project = project;
+  }
+
   public addMetadata(metadataAPI: string, metadataitem: string | string[]) {
     if (!Array.isArray(metadataitem)) metadataitem = [metadataitem];
     if (!this.xmlFile.Package.types) this.xmlFile.Package.types = {};
@@ -85,7 +90,7 @@ export class Package {
   }
 
   public insertExample(metadataAPI: string) {
-    const pkgexample = require(`${this.project.path}\\templates\\packageExamples.json`);
+    const pkgexample = require(`${this._project.path}\\templates\\packageExamples.json`);
 
     this.addMetadata(metadataAPI, pkgexample[metadataAPI]);
   }
@@ -97,7 +102,11 @@ export class Package {
 
     this.xmlFile.Package.types = [];
 
-    for (const metadataApi in tempTypes) this.xmlFile.Package.types.push(tempTypes[metadataApi]);
+    for (const metadataApi in tempTypes) {
+      console.log({ metadataApi });
+
+      this.xmlFile.Package.types.push(tempTypes[metadataApi]);
+    }
 
     let response = xmlBuilder
       .buildObject(this.xmlFile)
@@ -124,8 +133,60 @@ export class Package {
 
     let file = this.toXML();
 
-    Fs.writeFileSync(this.path + "\\package.xml", file);
+    // Fs.writeFileSync(this.path + "\\package.xml", file);
 
     // TODO create destructive file
+  }
+
+  public cleanFiles() {
+    let mainPath = `${this._project.path}\\packages\\${this.dirname}`;
+    let files = Fs.readdirSync(mainPath);
+
+    for (const file of files) {
+      if (file == "package.xml" || file == "destructive.xml") continue;
+
+      //@ts-ignore
+      Fs.rmdirSync(`${mainPath}\\${file}`, { recursive: true });
+    }
+  }
+
+  public loadXML() {
+    var parser = new xml2js.Parser();
+
+    let types: any = {};
+
+    this.xmlFile = {
+      Package: {
+        $: { xmlns: "http://soap.sforce.com/2006/04/metadata" },
+        fullName: "",
+        types: {},
+        version: spmConfig.salesforceApi,
+      },
+    };
+
+    //@ts-ignore
+    parser.parseString(Fs.readFileSync(`${this.path}\\package.xml`).toString(), function (err, result) {
+      result.Package = result.Package ?? {};
+      result.Package.types = result.Package.types ?? [];
+
+      for (const t of result.Package.types) {
+        if (t.name[0]) types[t.name[0]] = t.members ?? [];
+      }
+    });
+
+    this.xmlFile.Package.types = types;
+
+    return this.xmlFile;
+  }
+
+  static getPackage(pkgPath: string) {
+    let pkg = new Package({
+      dirname: Path.basename(pkgPath),
+      options: { project: new Controller.Project({ path: Path.dirname(pkgPath).replace("\\packages", "") }) },
+    });
+
+    pkg.loadXML();
+
+    return pkg;
   }
 }

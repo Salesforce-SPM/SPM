@@ -2,6 +2,7 @@ export * as color from "./chalk";
 import * as chalk from "chalk";
 import * as Interface from "../interface";
 import * as color from "./chalk";
+import * as Fs from "fs";
 
 //@ts-ignore
 import xml2js = require("xml2js");
@@ -10,6 +11,8 @@ let XMLParser = xml2js.parseString;
 
 let XMLBuilder = new xml2js.Builder();
 delete XMLBuilder.options.xmldec.standalone;
+
+var lastLogWasError = false;
 
 interface sanitizeStringOptions {
   preserveCaps?: Boolean;
@@ -124,4 +127,22 @@ export function printTree(input: any, level: number = 0) {
       printTree(input[key], level + 1);
     }
   }
+}
+
+export function getTimeStamp(dt: Date = new Date()) {
+  let splited = dt.toISOString().split("T");
+
+  let day = splited[0];
+  let hour = splited[1].replace("Z", "").split(":").join("-");
+
+  return `${dt.getTime()}_${day}_${hour}`;
+}
+
+export function logTimeStamp() {
+  let dt = new Date();
+
+  let stamp = dt.toLocaleString().replace(", ", "|");
+
+  return `${dt.getTime()}|${stamp}`;
+  // 16:43:40.0 (14450807)|HEAP_ALLOCATE|[84]|Bytes:152
 }

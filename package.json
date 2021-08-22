@@ -1,5 +1,5 @@
 {
-  "name": "SPM",
+  "name": "spm",
   "version": "0.0.0",
   "author": "Gabriel Loch",
   "bin": {
@@ -12,6 +12,8 @@
     "@oclif/plugin-help": "^3.2.2",
     "axios": "^0.21.1",
     "chalk": "^4.1.1",
+    "cli-ux": "^5.6.3",
+    "decompress": "^4.2.1",
     "inquirer": "^8.1.1",
     "inquirer-search-checkbox": "^1.0.0",
     "inquirer-search-list": "^1.2.6",
@@ -21,9 +23,11 @@
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1.26.0",
+    "@types/decompress": "^4.2.4",
     "@types/inquirer": "^7.3.1",
     "@types/jsforce": "^1.9.33",
     "@types/node": "^10.17.60",
+    "dotenv": "^10.0.0",
     "eslint": "^5.16.0",
     "eslint-config-oclif": "^3.1.0",
     "eslint-config-oclif-typescript": "^0.1.0",
@@ -65,7 +69,6 @@
   },
   "repository": "salesforce-package-manager/salesforce-package-manager-cli",
   "scripts": {
-    "runTest": "cd test && ..\\bin\\run test",
     "postpack": "rimraf oclif.manifest.json",
     "posttest": "eslint . --ext .ts --config .eslintrc",
     "prepack": "rimraf lib && tsc -b && oclif-dev manifest && oclif-dev readme",

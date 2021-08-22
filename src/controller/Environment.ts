@@ -17,7 +17,7 @@ abstract class EnvironmentConfig {
     this.project = args.project;
   }
 
-  private project: Controller.Project;
+  protected project: Controller.Project;
   public config: Interface.Environment.File;
   private _path: string;
 
@@ -74,9 +74,11 @@ abstract class EnvironmentConfig {
 }
 
 export class Environment extends EnvironmentConfig {
+  public conn: Controller.EnvironmentConnection;
+
   constructor(args?: {
     path?: string;
-    options?: { loadFile?: Boolean; project?: Controller.Project; config?: Interface.Environment.File };
+    options?: { project?: Controller.Project; config?: Interface.Environment.File };
   }) {
     if (!args) args = {};
     if (!args.options) args.options = {};
@@ -89,8 +91,6 @@ export class Environment extends EnvironmentConfig {
 
     this.conn = new Controller.EnvironmentConnection(this);
   }
-
-  public conn: Controller.EnvironmentConnection;
 
   public fileExist() {
     if (!this.path) Utils.string.errorMessage("Environment doesn't has a path!");
@@ -140,5 +140,17 @@ export class Environment extends EnvironmentConfig {
     let resp = errors.join(", ");
 
     return resp == "" ? true : resp;
+  }
+
+  static loadEnvironment(project: Controller.Project, file: string) {
+    if (!file.endsWith(".json")) file += ".json";
+
+    let envFile: Interface.Environment.File = JSON.parse(Fs.readFileSync(`${project.path}\\.envs\\${file}`).toString());
+
+    let env = new Environment({ options: { project, config: envFile } });
+
+    env.token = envFile.secretToken;
+
+    return env;
   }
 }

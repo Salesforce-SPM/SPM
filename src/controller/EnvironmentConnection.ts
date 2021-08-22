@@ -3,44 +3,76 @@ import * as Controller from "../controller";
 import * as Interface from "../interface";
 import * as Utils from "../utils";
 import { color } from "../utils/string";
+import { logger } from "../private/class/logger";
 
 export class EnvironmentConnection {
   private env: Controller.Environment;
   private conn: JSForce.Connection;
+
   constructor(env: Controller.Environment, options?: Interface.Environment.ConnOptions) {
     this.env = env;
 
     // if (!options) options = {};
   }
 
-  async login(options: { verbose?: Boolean } = {}): Promise<boolean> {
+  async login(options: { verbose?: boolean } = {}): Promise<boolean> {
+    let hasError = false;
     if (!this.env.url || !Utils.validation.isValidURL(this.env.url)) {
-      Utils.string.errorMessage("Environment doens't has a valid URL");
+      hasError = true;
+      this.logError("Environment doens't has a valid URL", false);
+    } else if (!this.env.user || !Utils.validation.isValidEmail(this.env.user)) {
+      hasError = true;
+      this.logError("Environment doens't has a valid user", false);
+    } else if (!this.env.password) {
+      hasError = true;
+      this.logError("Environment doens't has a password", false);
+    } else if (!this.env.token) {
+      hasError = true;
+      this.logError("Environment doens't has a token", false);
     }
 
-    if (!this.env.user || !Utils.validation.isValidEmail(this.env.user)) {
-      Utils.string.errorMessage("Environment doens't has a valid user");
-    } else if (!this.env.password) {
-      Utils.string.errorMessage("Environment doens't has a password");
-    } else if (!this.env.token) {
-      Utils.string.errorMessage("Environment doens't has a token");
-    } else if (!this.conn) {
-      if (options.verbose) {
-        console.log(`Creating connection to ${this.env.url} as ${this.env.user} with api ${this.env.apiVersion}`);
-      }
+    if (hasError) this.logError("Invalid environment", true);
+
+    if (!this.conn) {
+      this.info(
+        `Creating connection to ${this.env.url} as ${this.env.user} with api ${this.env.apiVersion}`,
+        options.verbose
+      );
 
       this.conn = new JSForce.Connection({ loginUrl: this.env.url, version: this.env.apiVersion });
     }
 
     try {
-      if (options.verbose) {
-        console.log(`Requested a accesstoken to ${this.env.url} as ${this.env.user}`);
-      }
+      this.info(`Requested a access token to ${this.env.url} as ${this.env.user}`, options.verbose);
       await this.conn.login(this.env.user, `${this.env.password}${this.env.token}`);
       return true;
     } catch (error) {
-      color.red(`Error on requesting the token to ${this.env.url} ${error.toString().replace("Error: ", "")}`);
+      this.logError(
+        `Error on requesting a access token to ${this.env.name}(${this.env.url}) ${error.toString().replace("Error: ", "")}`,
+        true
+      );
       return false;
     }
+  }
+
+  async retrievePackage(options: any) {
+    if (!(await this.login())) Utils.string.errorMessage("login failed");
+
+    try {
+      //@ts-ignore
+      return await this.conn.metadata.retrieve(options).complete({ details: true });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  private logError(text: string, exception = false) {
+    if (logger) logger.error(text, { exception });
+    else Utils.string.errorMessage(text);
+  }
+
+  private info(text: string, prompt = false) {
+    if (logger) logger.info(text, prompt);
+    else console.log(text);
   }
 }

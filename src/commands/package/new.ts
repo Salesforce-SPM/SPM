@@ -15,24 +15,17 @@ export default class Project extends Command {
   // static examples = 'commandExamples' // TODO
 
   static flags = {
-    help: flags.help({ char: "h", description: "" }),
+    help: flags.help({ char: "h", description: "Help" }), // TODO better desc
     name: flags.string({ char: "n", description: "New package name" }),
     force: flags.boolean({
       char: "f",
-      description: "Won't confirm package creation.",
+      description: "Won't confirm package creation. And ignorer errors when usint --template. Depends on --name",
       dependsOn: ["name"],
     }),
     // TODO creat destructive routine
-    // hasDestructive: flags.boolean({
-    //   char: "d",
-    //   default: false,
-    //   description: "If informed, will create a destructive xml file on package dir.",
-    // }),
+    // hasDestructive: flags.boolean({char: "d", default: false, description: "If informed, will create a destructive xml file on package dir." }),
     template: flags.string({ char: "t", multiple: true }),
-    version: flags.string({
-      char: "v",
-      description: `Set package API version, default is ${defaultApiVersion}`,
-    }),
+    version: flags.string({ char: "v", description: `Set package API version, default is ${defaultApiVersion}` }),
   };
 
   private project: Controller.Project;
@@ -41,28 +34,6 @@ export default class Project extends Command {
   private package: Controller.Package;
   private searchTemplate: boolean = false;
   private projectTemplates: any = {};
-
-  async run() {
-    this.doInit();
-
-    for (let tp of this.flags.templates.entries()) this.package.insertExample(tp[0]);
-
-    await this.getName();
-
-    // TODO checa duplicado
-    if (Fs.existsSync(`${this.package.path}`) && !this.flags.force) {
-      this.warn(`Package ${this.package.name} already exists!`);
-
-      return;
-    }
-
-    if (this.searchTemplate || true) await this.getExampleOptions();
-
-    this.package.save({ overwrite: true });
-    this.log(`Package ${this.package.name} created at ./packages/${this.package.name}`);
-
-    console.log(this.log);
-  }
 
   private doInit() {
     const { args, flags } = this.parse(Project);
@@ -96,13 +67,29 @@ export default class Project extends Command {
     this.flags.templates = templates;
   }
 
-  private async getName() {
-    if (!this.flags.name && this.flags.force) {
-      this.error(
-        'Process has force=true but no name was informed (spm package:new "Some Project Name" -f). See spm package:new -h'
-      );
+  async run() {
+    this.doInit();
+
+    for (let tp of this.flags.templates.entries()) this.package.insertExample(tp[0]);
+
+    await this.getName();
+
+    // TODO checa duplicado
+    if (Fs.existsSync(`${this.package.path}`) && !this.flags.force) {
+      this.warn(`Package ${this.package.name} already exists!`);
+
+      let confirmOverwrite = await Utils.inquirer.confirm(`Overwrite "${this.package.path}\\package.xml"?`);
+
+      if (!confirmOverwrite) return Utils.string.color.red("Operation canceled");
     }
 
+    if (this.searchTemplate || true) await this.getExampleOptions();
+
+    this.package.save({ overwrite: true });
+    this.log(`Package ${this.package.name} created at ./packages/${this.package.name}`);
+  }
+
+  private async getName() {
     this.package.name = this.flags.name;
 
     if (!this.package.name) {
