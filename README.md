@@ -16,11 +16,11 @@ salesforce-package-manager-cli
 # Usage
 <!-- usage -->
 ```sh-session
-$ npm install -g SPM
+$ npm install -g spm
 $ spm COMMAND
 running command...
 $ spm (-v|--version|version)
-SPM/0.0.0 win32-x64 node-v14.15.1
+spm/0.0.0 win32-x64 node-v14.15.1
 $ spm --help [COMMAND]
 USAGE
   $ spm COMMAND
@@ -44,6 +44,7 @@ USAGE
 * [`spm environment:new`](#spm-environmentnew)
 * [`spm help [COMMAND]`](#spm-help-command)
 * [`spm package:new`](#spm-packagenew)
+* [`spm package:retrieve`](#spm-packageretrieve)
 * [`spm project:menu`](#spm-projectmenu)
 * [`spm project:new [NAME]`](#spm-projectnew-name)
 
@@ -107,14 +108,40 @@ USAGE
   $ spm package:new
 
 OPTIONS
-  -f, --force              Won't confirm package creation.
-  -h, --help
+  -f, --force              Won't confirm package creation. And ignorer errors when usint --template. Depends on --name
+  -h, --help               Help
   -n, --name=name          New package name
   -t, --template=template
   -v, --version=version    Set package API version, default is 52.0
 ```
 
 _See code: [src/commands/package/new.ts](https://github.com/salesforce-package-manager/salesforce-package-manager-cli/blob/v0.0.0/src/commands/package/new.ts)_
+
+## `spm package:retrieve`
+
+retrieve
+
+```
+USAGE
+  $ spm package:retrieve
+
+OPTIONS
+  -e, --environment=environment
+  -f, --force
+  -h, --help                     show CLI help
+  -p, --package=package
+  --noLog
+  --saveResult
+
+DESCRIPTION
+  * Some desc
+
+EXAMPLES
+  $ spm retrieve
+  $ spm retrieve Some example
+```
+
+_See code: [src/commands/package/retrieve.ts](https://github.com/salesforce-package-manager/salesforce-package-manager-cli/blob/v0.0.0/src/commands/package/retrieve.ts)_
 
 ## `spm project:menu`
 
