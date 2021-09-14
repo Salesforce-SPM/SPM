@@ -158,7 +158,7 @@ export class Project extends ProjectConfig {
     console.log(chalk.bold("Created: "));
 
     for (const dir of defaultDirs) {
-      let dirPath = `${saveAt}\\${dir}`;
+      let dirPath = Path.join(saveAt, dir);
 
       if (!Fs.existsSync(dirPath)) {
         Fs.mkdirSync(dirPath);
@@ -169,7 +169,7 @@ export class Project extends ProjectConfig {
     this.saveConfig({ force: args.force });
 
     //defaultExample
-    Fs.writeFileSync(`${saveAt}\\templates\\packageExamples.json`, JSON.stringify(defaultExample, null, 4));
+    Fs.writeFileSync(Path.join(saveAt, 'templates', 'packageExamples.json'), JSON.stringify(defaultExample, null, 4));
 
     return true;
   }
